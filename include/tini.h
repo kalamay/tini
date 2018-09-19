@@ -159,7 +159,7 @@ extern enum tini_result
 tini_validate(struct tini_ctx *ctx);
 
 extern void
-tini_print_errors(struct tini_ctx *ctx,
+tini_print_errors(const struct tini_ctx *ctx,
 		const char *path, FILE *out);
 
 extern void __attribute__ ((format (printf, 5, 6)))

@@ -11,6 +11,18 @@
 
 #define ERR_MAX (sizeof(((struct tini_ctx *)0)->err)/sizeof(((struct tini_ctx *)0)->err[0]))
 
+static int
+cmperr(const void *a, const void *b)
+{
+	const struct tini *na = ((struct tini_error *)a)->node;
+	const struct tini *nb = ((struct tini_error *)b)->node;
+	if (na->linepos < nb->linepos) { return -1; }
+	if (na->linepos > nb->linepos) { return 1; }
+	if (na->column < nb->column) { return -1; }
+	if (na->column > nb->column) { return 1; }
+	return 0;
+}
+
 enum tini_result
 tini_validate(struct tini_ctx *ctx)
 {
@@ -34,19 +46,12 @@ tini_validate(struct tini_ctx *ctx)
 		}
 	}
 
-	return ctx->nerr == 0 ? 0 : ctx->err[0].code;
-}
+	unsigned nerr = ctx->nerr;
+	if (nerr > ERR_MAX) { nerr = ERR_MAX; }
 
-static int
-cmperr(const void *a, const void *b)
-{
-	const struct tini *na = a;
-	const struct tini *nb = b;
-	if (na->linepos < nb->linepos) { return -1; }
-	if (na->linepos > nb->linepos) { return 1; }
-	if (na->column < nb->column) { return -1; }
-	if (na->column > nb->column) { return 1; }
-	return 0;
+	qsort(ctx->err, nerr, sizeof(ctx->err[0]), cmperr);
+
+	return nerr ? ctx->err[0].code : 0;
 }
 
 const char *
@@ -74,12 +79,10 @@ tini_msg(enum tini_result rc)
 }
 
 void
-tini_print_errors(struct tini_ctx *ctx, const char *path, FILE *out)
+tini_print_errors(const struct tini_ctx *ctx, const char *path, FILE *out)
 {
 	unsigned nerr = ctx->nerr;
 	if (nerr > ERR_MAX) { nerr = ERR_MAX; }
-
-	qsort(ctx->err, nerr, sizeof(ctx->err[0]), cmperr);
 
 	for (unsigned i = 0; i < nerr; i++) {
 		tini_errorf(ctx, ctx->err[i].node, path, out, "%s", tini_msg(ctx->err[i].code));
@@ -128,12 +131,11 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 	}
 
 	pe += tini_length(ctx, node);
-	if (tty) {
-		fprintf(out, RNG "^" RST "\n");
-	}
-	else {
-		fwrite("^\n", 1, 2, out);
-	}
+	if (tty) { fwrite(RNG, 1, sizeof(RNG) - 1, out); }
+	fputc('^', out);
+	for (p++; p<pe; p++) { fputc('~', out); }
+	if (tty) { fwrite(RST, 1, sizeof(RST) - 1, out); }
+	fputc('\n', out);
 }
 
 void
