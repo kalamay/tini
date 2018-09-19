@@ -199,6 +199,13 @@ tini_msg(enum tini_result rc);
 			dst); \
 })
 
+#define tini_setm(ctx, section, _struct, _member) __extension__ ({ \
+	struct tini_ctx *__ctx = (ctx); \
+	tini_set(__ctx, \
+			tini_value(tini_key(__ctx, (section), #_member, sizeof(#_member)-1)), \
+			(_struct)->_member); \
+})
+
 extern enum tini_result
 tini__set(struct tini_ctx *ctx, const struct tini *value,
 		enum tini_type type, void *out, size_t len);
