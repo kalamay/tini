@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+#define TINI_STRLEN SIZE_MAX
+
 enum tini_type
 {
 	TINI_NONE,

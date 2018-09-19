@@ -19,6 +19,9 @@ struct tini *
 tini_section(const struct tini_ctx *ctx,
 		const char *name, size_t namelen)
 {
+	if (namelen == TINI_STRLEN) {
+		namelen = strlen(name);
+	}
 	struct tini *ne = ctx->nodes + ctx->nnodes, *n = ne - ctx->nused[1];
 	for (--ne; ne >= n && ne->type == TINI_SECTION; --ne) {
 		if (tini_eq(ctx, ne, name, namelen)) {
@@ -45,6 +48,9 @@ tini_key(const struct tini_ctx *ctx, const struct tini *section,
 		const char *name, size_t namelen)
 {
 	if (section) {
+		if (namelen == TINI_STRLEN) {
+			namelen = strlen(name);
+		}
 		struct tini *n = section->next;
 		for (; n; n = n->next) {
 			if (n->type == TINI_KEY) {
