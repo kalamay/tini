@@ -125,10 +125,12 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 	}
 
 	pe += tini_length(ctx, node);
-	if (tty) { fwrite(RNG, 1, sizeof(RNG)-1, out); }
-	for (; p < pe; p++) { fputc('^', out); }
-	if (tty) { fwrite(RST, 1, sizeof(RST)-1, out); }
-	fputc('\n', out);
+	if (tty) {
+		fprintf(out, RNG "^" RST "\n");
+	}
+	else {
+		fwrite("^\n", 1, 2, out);
+	}
 }
 
 void
