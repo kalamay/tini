@@ -460,6 +460,28 @@ test_set(void)
 	mu_assert_flt_eq(dval, 1.23);
 }
 
+static void
+test_sections(void)
+{
+	struct tini_ctx ctx = tini_ctx_make(256, 128);
+	struct tini *section;
+
+	mu_assert_int_eq(tini_parse(&ctx, types, sizeof(types)-1, 0), TINI_SUCCESS);
+
+	section = tini_next_section(&ctx, NULL);
+	mu_assert(tini_streq(&ctx, section, ""));
+	section = tini_next_section(&ctx, section);
+	mu_assert(tini_streq(&ctx, section, "strings"));
+	section = tini_next_section(&ctx, section);
+	mu_assert(tini_streq(&ctx, section, "booleans"));
+	section = tini_next_section(&ctx, section);
+	mu_assert(tini_streq(&ctx, section, "ints"));
+	section = tini_next_section(&ctx, section);
+	mu_assert(tini_streq(&ctx, section, "doubles"));
+	section = tini_next_section(&ctx, section);
+	mu_assert_ptr_eq(section, NULL);
+}
+
 int
 main(void)
 {
@@ -473,5 +495,6 @@ main(void)
 	mu_run(test_resume_line);
 	mu_run(test_types);
 	mu_run(test_set);
+	mu_run(test_sections);
 }
 

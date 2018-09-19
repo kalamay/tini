@@ -111,6 +111,10 @@ tini_section(const struct tini_ctx *ctx,
 		const char *name, size_t namelen);
 
 extern struct tini *
+tini_next_section(const struct tini_ctx *ctx,
+		const struct tini *section);
+
+extern struct tini *
 tini_key(const struct tini_ctx *ctx, const struct tini *section,
 		const char *name, size_t namelen);
 

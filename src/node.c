@@ -30,6 +30,17 @@ tini_section(const struct tini_ctx *ctx,
 }
 
 struct tini *
+tini_next_section(const struct tini_ctx *ctx,
+		const struct tini *section)
+{
+	struct tini *ne = ctx->nodes + ctx->nnodes;
+	if (section == NULL) { section = ne; }
+	section--;
+	if (section >= ne || section < ne - ctx->nused[1]) { return NULL; }
+	return (struct tini *)section;
+}
+
+struct tini *
 tini_key(const struct tini_ctx *ctx, const struct tini *section,
 		const char *name, size_t namelen)
 {
