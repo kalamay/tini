@@ -39,7 +39,7 @@ tini_validate(struct tini_ctx *ctx)
 		for (; f; f = f->next) {
 			if (f->type == TINI_KEY && !f->used) {
 				if (ctx->nerr < ERR_MAX) {
-					ctx->err[ctx->nerr] = (struct tini_error) { f, TINI_UNUSED_FIELD };
+					ctx->err[ctx->nerr] = (struct tini_error) { f, TINI_UNUSED_KEY };
 				}
 				ctx->nerr++;
 			}
@@ -71,9 +71,9 @@ tini_msg(enum tini_result rc)
 	case TINI_NUMBER_FORMAT:     return "invalid number format";
 	case TINI_INVALID_TYPE:      return "invalid type";
 	case TINI_UNUSED_SECTION:    return "unsupported section";
-	case TINI_UNUSED_FIELD:      return "unsupported field";
+	case TINI_UNUSED_KEY:        return "unsupported key";
 	case TINI_MISSING_SECTION:   return "section not specified";
-	case TINI_MISSING_FIELD:     return "field not specified";
+	case TINI_MISSING_KEY:       return "key not specified";
 	}
 	return "unknown error";
 }

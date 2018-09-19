@@ -84,7 +84,7 @@ tini__set(struct tini_ctx *ctx, const struct tini *value,
 		enum tini_type type, void *out, size_t len)
 {
 	if (value == NULL) {
-		return TINI_MISSING_FIELD;
+		return TINI_MISSING_KEY;
 	}
 
 	enum tini_result rc;
