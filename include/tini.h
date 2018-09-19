@@ -117,6 +117,8 @@ extern struct tini *
 tini_section(const struct tini_ctx *ctx,
 		const char *name, size_t namelen);
 
+#define tini_global(ctx) tini_section(ctx, NULL, 0)
+
 extern struct tini *
 tini_next_section(const struct tini_ctx *ctx,
 		const struct tini *section);
