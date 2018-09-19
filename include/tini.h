@@ -151,7 +151,7 @@ extern enum tini_result
 tini_double(const struct tini_ctx *ctx, const struct tini *value,
 		double *out);
 
-extern bool
+extern enum tini_result
 tini_validate(struct tini_ctx *ctx);
 
 extern void

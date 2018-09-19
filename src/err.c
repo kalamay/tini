@@ -11,7 +11,7 @@
 
 #define ERR_MAX (sizeof(((struct tini_ctx *)0)->err)/sizeof(((struct tini_ctx *)0)->err[0]))
 
-bool
+enum tini_result
 tini_validate(struct tini_ctx *ctx)
 {
 	struct tini *ne = ctx->nodes + ctx->nnodes, *n = ne - ctx->nused[1];
@@ -34,7 +34,7 @@ tini_validate(struct tini_ctx *ctx)
 		}
 	}
 
-	return ctx->nerr == 0;
+	return ctx->nerr == 0 ? 0 : ctx->err[0].code;
 }
 
 static int
