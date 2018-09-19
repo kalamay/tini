@@ -461,6 +461,35 @@ test_set(void)
 }
 
 static void
+test_setf(void)
+{
+	struct tini_ctx ctx = tini_ctx_make(256, 128);
+	struct tini *section;
+	char sval[32];
+	bool bval;
+	int64_t ival;
+	double dval;
+
+	mu_assert_int_eq(tini_parse(&ctx, types, sizeof(types)-1, 0), TINI_SUCCESS);
+
+	section = tini_section(&ctx, "strings", 7);
+	mu_assert_int_eq(tini_setf(&ctx, section, "value1", sval), TINI_SUCCESS);
+	mu_assert_str_eq(sval, "test");
+
+	section = tini_section(&ctx, "booleans", 8);
+	mu_assert_int_eq(tini_setf(&ctx, section, "value1", bval), TINI_SUCCESS);
+	mu_assert_int_eq(bval, true);
+
+	section = tini_section(&ctx, "ints", 4);
+	mu_assert_int_eq(tini_setf(&ctx, section, "value1", ival), TINI_SUCCESS);
+	mu_assert_int_eq(ival, 123);
+
+	section = tini_section(&ctx, "doubles", 7);
+	mu_assert_int_eq(tini_setf(&ctx, section, "value1", dval), TINI_SUCCESS);
+	mu_assert_flt_eq(dval, 1.23);
+}
+
+static void
 test_sections(void)
 {
 	struct tini_ctx ctx = tini_ctx_make(256, 128);
@@ -495,6 +524,7 @@ main(void)
 	mu_run(test_resume_line);
 	mu_run(test_types);
 	mu_run(test_set);
+	mu_run(test_setf);
 	mu_run(test_sections);
 }
 

@@ -40,6 +40,8 @@ enum tini_result
 	TINI_INVALID_TYPE,
 	TINI_UNUSED_SECTION,
 	TINI_UNUSED_FIELD,
+	TINI_MISSING_SECTION,
+	TINI_MISSING_FIELD,
 };
 
 struct tini
@@ -92,7 +94,10 @@ struct tini_ctx
 	.cs = -1, \
 }
 
-#define tini_offset(ctx, node) (tini_bol(ctx, node) + (node)->column)
+#define tini_offset(ctx, node) __extension__ ({ \
+	const struct tini *__node = (node); \
+	tini_bol((ctx), __node) + __node->column; \
+})
 #define tini_length(ctx, node) ((node)->length)
 #define tini_line(ctx, node) ((ctx)->linestart + (node)->linepos)
 #define tini_column(ctx, node) ((node)->column)
@@ -125,8 +130,10 @@ extern bool
 tini_eq(const struct tini_ctx *ctx, const struct tini *node,
 		const char *val, size_t len);
 
-#define tini_streq(ctx, node, str) \
-	tini_eq(ctx, node, str, strlen(str))
+#define tini_streq(ctx, node, str) __extension__ ({ \
+	const char *__str = (str); \
+	tini_eq(ctx, node, __str, strlen(__str)); \
+})
 
 extern char *
 tini_str(const struct tini_ctx *ctx, const struct tini *node,
@@ -159,6 +166,8 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 extern void
 tini_print(const struct tini_ctx *ctx, FILE *out);
 
+extern const char *
+tini_msg(enum tini_result rc);
 
 #define tini_type(v) _Generic((v), \
 		char *: TINI_STRING, \
@@ -177,6 +186,14 @@ tini_print(const struct tini_ctx *ctx, FILE *out);
 #define tini_set(ctx, value, dst) \
 	tini__set((ctx), (value), tini_type(dst), \
 			_Generic((dst), char *: (dst), default: &(dst)), sizeof(dst))
+
+#define tini_setf(ctx, section, name, dst) __extension__ ({ \
+	struct tini_ctx *__ctx = (ctx); \
+	const char *__nm = (name); \
+	tini_set(__ctx, \
+			tini_value(tini_key(__ctx, (section), __nm, strlen(__nm))), \
+			dst); \
+})
 
 extern enum tini_result
 tini__set(struct tini_ctx *ctx, const struct tini *value,

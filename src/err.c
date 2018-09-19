@@ -49,8 +49,8 @@ cmperr(const void *a, const void *b)
 	return 0;
 }
 
-static const char *
-msg(enum tini_result rc)
+const char *
+tini_msg(enum tini_result rc)
 {
 	switch (rc) {
 	case TINI_SUCCESS:           return "ok";
@@ -67,7 +67,10 @@ msg(enum tini_result rc)
 	case TINI_INVALID_TYPE:      return "invalid type";
 	case TINI_UNUSED_SECTION:    return "unsupported section";
 	case TINI_UNUSED_FIELD:      return "unsupported field";
+	case TINI_MISSING_SECTION:   return "section not specified";
+	case TINI_MISSING_FIELD:     return "field not specified";
 	}
+	return "unknown error";
 }
 
 void
@@ -79,7 +82,7 @@ tini_print_errors(struct tini_ctx *ctx, const char *path, FILE *out)
 	qsort(ctx->err, nerr, sizeof(ctx->err[0]), cmperr);
 
 	for (unsigned i = 0; i < nerr; i++) {
-		tini_errorf(ctx, ctx->err[i].node, path, out, "%s", msg(ctx->err[i].code));
+		tini_errorf(ctx, ctx->err[i].node, path, out, "%s", tini_msg(ctx->err[i].code));
 	}
 
 	if (nerr < ctx->nerr) {

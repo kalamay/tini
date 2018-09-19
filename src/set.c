@@ -83,6 +83,10 @@ enum tini_result
 tini__set(struct tini_ctx *ctx, const struct tini *value,
 		enum tini_type type, void *out, size_t len)
 {
+	if (value == NULL) {
+		return TINI_MISSING_FIELD;
+	}
+
 	enum tini_result rc;
 	switch (type) {
 	case TINI_STRING:   rc = set_string(ctx, value, out, len);   break;
