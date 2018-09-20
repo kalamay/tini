@@ -15,6 +15,7 @@ enum tini_type
 
 	// node types
 	TINI_SECTION,
+	TINI_LABEL,
 	TINI_KEY,
 	TINI_VALUE,
 

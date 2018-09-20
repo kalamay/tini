@@ -27,6 +27,13 @@
 		sectail = &sec->next;
 	}
 
+	action store_label {
+		struct tini *label = get_node(ctx, TINI_LABEL, get_column(ctx, mark - txt), p - mark);
+		if (label == NULL) { BAIL(TINI_NODE_COUNT); }
+		*sectail = label;
+		sectail = &label->next;
+	}
+
 	action store_key {
 		key = get_node(ctx, TINI_KEY, get_column(ctx, mark - txt), p - mark);
 		if (key == NULL) { BAIL(TINI_NODE_COUNT); }
@@ -42,11 +49,14 @@
 
 	ws      = [\t\v\f\r ];
 	nl      = '\n' >push_line;
-	string  = ( alpha | digit | '-' | '_' | ':' )+;
+	name    = ( alpha | digit | '-' | '_' | '.' )+;
+	string  = ( name | ':' )+;
 	key     = string >mark %store_key;
 	value   = [^\n]* >mark %store_value;
 	comment = ( '#' | ';' ) [^\n]*;
-	section = '[' ws* ( string >mark %set_section ) ws* ']';
+	sname   = name >mark %set_section;
+	slabel  = ':' ws* ( string >mark %store_label );
+	section = '[' ws* sname ws* ( ':' slabel ws* )? ']';
 	setting = key ws* '=' ws* ( value >mark );
 	line    = ( comment | section | setting ) {,1} nl;
 

@@ -59,7 +59,7 @@ tini_key(const struct tini_ctx *ctx, const struct tini *section,
 					return n;
 				}
 			}
-			else if (n->type != TINI_VALUE) {
+			else if (n->type != TINI_LABEL && n->type != TINI_VALUE) {
 				break;
 			}
 		}

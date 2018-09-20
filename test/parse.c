@@ -537,6 +537,24 @@ test_sections(void)
 	mu_assert_ptr_eq(section, NULL);
 }
 
+static void
+test_labels(void)
+{
+	static const char txt[] = 
+		"[section:stuff]\n"
+		"foo = bar\n"
+		"\n"
+		"[section:things]\n"
+		"a = 123\n"
+		"b = false\n"
+		;
+
+	struct tini_ctx ctx = tini_ctx_make(256, 128);
+	struct tini *section;
+
+	mu_assert_int_eq(tini_parse(&ctx, types, sizeof(types)-1, 0), TINI_SUCCESS);
+}
+
 int
 main(void)
 {
@@ -553,5 +571,6 @@ main(void)
 	mu_run(test_setf);
 	mu_run(test_setm);
 	mu_run(test_sections);
+	mu_run(test_labels);
 }
 
