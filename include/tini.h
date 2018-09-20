@@ -8,7 +8,23 @@
 #include <sys/types.h>
 #include <stdio.h>
 
-#define TINI_STRLEN SIZE_MAX
+enum tini_result
+{
+	TINI_SUCCESS,
+	TINI_SYNTAX,
+	TINI_STRING_TOO_BIG,
+	TINI_BOOL_FORMAT,
+	TINI_INTEGER_FORMAT,
+	TINI_INTEGER_TOO_SMALL,
+	TINI_INTEGER_TOO_BIG,
+	TINI_INTEGER_NEGATIVE,
+	TINI_NUMBER_FORMAT,
+	TINI_INVALID_TYPE,
+	TINI_UNUSED_SECTION,
+	TINI_UNUSED_KEY,
+	TINI_MISSING_SECTION,
+	TINI_MISSING_KEY,
+};
 
 enum tini_type
 {
@@ -28,23 +44,19 @@ enum tini_type
 	TINI_NUMBER
 };
 
-enum tini_result
-{
-	TINI_SUCCESS,
-	TINI_SYNTAX,
-	TINI_STRING_TOO_BIG,
-	TINI_BOOL_FORMAT,
-	TINI_INTEGER_FORMAT,
-	TINI_INTEGER_TOO_SMALL,
-	TINI_INTEGER_TOO_BIG,
-	TINI_INTEGER_NEGATIVE,
-	TINI_NUMBER_FORMAT,
-	TINI_INVALID_TYPE,
-	TINI_UNUSED_SECTION,
-	TINI_UNUSED_KEY,
-	TINI_MISSING_SECTION,
-	TINI_MISSING_KEY,
-};
+#define tini_type(v) _Generic((v), \
+		char *: TINI_STRING, \
+		bool: TINI_BOOL, \
+		int8_t: TINI_SIGNED, \
+		int16_t: TINI_SIGNED, \
+		int32_t: TINI_SIGNED, \
+		int64_t: TINI_SIGNED, \
+		uint8_t: TINI_UNSIGNED, \
+		uint16_t: TINI_UNSIGNED, \
+		uint32_t: TINI_UNSIGNED, \
+		uint64_t: TINI_UNSIGNED, \
+		float: TINI_NUMBER, \
+		double: TINI_NUMBER)
 
 struct tini
 {
@@ -71,6 +83,17 @@ struct tini_field
 	const enum tini_type type;
 };
 
+#define tini_field_make_as(_struct, _member, _name) \
+	((struct tini_field) { \
+		.name = _name, \
+		.size = sizeof(((_struct *)0)->_member), \
+		.offset = offsetof(_struct, _member), \
+		.type = tini_type(((_struct *)0)->_member) \
+	})
+
+#define tini_field_make(_struct, _member) \
+	tini_field_make_as(_struct, _member, #_member)
+
 struct tini_section
 {
 	const struct tini_field *fields;
@@ -82,6 +105,13 @@ struct tini_section
 			const struct tini *value,
 			void *udata);
 };
+
+#define tini_section_set(section, _target, _fields) do { \
+	struct tini_section *__tmp = (section); \
+	__tmp->fields = (_fields); \
+	__tmp->nfields = sizeof(_fields) / sizeof((_fields)[0]); \
+	__tmp->target = (_target); \
+} while (0)
 
 struct tini_ctx
 {
@@ -148,38 +178,6 @@ tini_msg(enum tini_result rc);
 extern const struct tini_field *
 tini_field_find(const struct tini_section *s,
 		const char *name, size_t namelen);
-
-#define tini_type(v) _Generic((v), \
-		char *: TINI_STRING, \
-		bool: TINI_BOOL, \
-		int8_t: TINI_SIGNED, \
-		int16_t: TINI_SIGNED, \
-		int32_t: TINI_SIGNED, \
-		int64_t: TINI_SIGNED, \
-		uint8_t: TINI_UNSIGNED, \
-		uint16_t: TINI_UNSIGNED, \
-		uint32_t: TINI_UNSIGNED, \
-		uint64_t: TINI_UNSIGNED, \
-		float: TINI_NUMBER, \
-		double: TINI_NUMBER)
-
-#define tini_field_make_as(_struct, _member, _name) \
-	((struct tini_field) { \
-		.name = _name, \
-		.size = sizeof(((_struct *)0)->_member), \
-		.offset = offsetof(_struct, _member), \
-		.type = tini_type(((_struct *)0)->_member) \
-	})
-
-#define tini_field_make(_struct, _member) \
-	tini_field_make_as(_struct, _member, #_member)
-
-#define tini_section_set(section, _target, _fields) do { \
-	struct tini_section *__tmp = (section); \
-	__tmp->fields = (_fields); \
-	__tmp->nfields = sizeof(_fields) / sizeof((_fields)[0]); \
-	__tmp->target = (_target); \
-} while (0)
 
 extern enum tini_result
 tini_set(void *target,
