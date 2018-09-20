@@ -1,18 +1,38 @@
 #include "../include/tini.h"
 
-static enum tini_result
-set_string(struct tini_ctx *ctx, const struct tini *value,
-		char *out, size_t len)
+static bool
+streq(const char *str, const void *mem, size_t memlen)
 {
-	uint32_t vlen = tini_length(ctx, value);
-	if (vlen < len) {
-		memcpy(out, ctx->txt + tini_offset(ctx, value), vlen);
-		out[vlen] = '\0';
-		return TINI_SUCCESS;
+	size_t n = strlen(str);
+	return n == memlen && memcmp(str, mem, n) == 0;
+}
+
+const struct tini_field *
+tini_field_find(const struct tini_section *s,
+		const char *name, size_t namelen)
+{
+	const struct tini_field *p = s->fields, *pe = p + s->nfields;
+	for (; p < pe; p++) {
+		if (streq(p->name, name, namelen)) {
+			return p;
+		}
 	}
-	else {
-		return TINI_STRING_SIZE;
+	return NULL;
+}
+
+enum tini_result
+tini_assign(const struct tini_section *section,
+		const struct tini *key,
+		const struct tini *value,
+		void *udata)
+{
+	(void)udata;
+
+	const struct tini_field *f = tini_field_find(section, key->start, key->length);
+	if (f == NULL) {
+		return TINI_MISSING_KEY;
 	}
+	return tini_set(section->target, f, value);
 }
 
 #define SETS(rc, out, type, val, min, max) do { \
@@ -22,11 +42,10 @@ set_string(struct tini_ctx *ctx, const struct tini *value,
 } while (0)
 
 static enum tini_result
-set_signed(struct tini_ctx *ctx, const struct tini *value,
-		void *out, size_t len)
+set_signed(void *out, size_t len, const struct tini *value)
 {
 	int64_t val;
-	enum tini_result rc = tini_int(ctx, value, 0, &val);
+	enum tini_result rc = tini_int(&val, 0, value);
 	if (rc == TINI_SUCCESS) {
 		switch (len) {
 		case sizeof(int8_t):  SETS(rc, out, int8_t, val, INT8_MIN, INT8_MAX); break;
@@ -46,11 +65,10 @@ set_signed(struct tini_ctx *ctx, const struct tini *value,
 } while (0)
 
 static enum tini_result
-set_unsigned(struct tini_ctx *ctx, const struct tini *value,
-		void *out, size_t len)
+set_unsigned(void *out, size_t len, const struct tini *value)
 {
 	int64_t val;
-	enum tini_result rc = tini_int(ctx, value, 0, &val);
+	enum tini_result rc = tini_int(&val, 0, value);
 	if (rc == TINI_SUCCESS) {
 		switch (len) {
 		case sizeof(uint8_t):  SETU(rc, out, uint8_t, val, UINT8_MAX); break;
@@ -66,11 +84,10 @@ set_unsigned(struct tini_ctx *ctx, const struct tini *value,
 	return rc;
 }
 static enum tini_result
-set_number(struct tini_ctx *ctx, const struct tini *value,
-		void *out, size_t len)
+set_number(void *out, size_t len, const struct tini *value)
 {
 	double val;
-	enum tini_result rc = tini_double(ctx, value, &val);
+	enum tini_result rc = tini_double(&val, value);
 	if (rc == TINI_SUCCESS) {
 		switch (len) {
 		case sizeof(float): *(float *)out = (float)val; break;
@@ -80,30 +97,22 @@ set_number(struct tini_ctx *ctx, const struct tini *value,
 	return rc; }
 
 enum tini_result
-tini__set(struct tini_ctx *ctx, const struct tini *value,
-		enum tini_type type, void *out, size_t len)
+tini_set(void *target,
+		const struct tini_field *field,
+		const struct tini *value)
 {
-	if (value == NULL) {
-		return TINI_MISSING_KEY;
+	if (field == NULL) {
+		return TINI_UNUSED_KEY;
 	}
 
-	enum tini_result rc;
-	switch (type) {
-	case TINI_STRING:   rc = set_string(ctx, value, out, len);   break;
-	case TINI_BOOL:     rc = tini_bool(ctx, value, out);         break;
-	case TINI_SIGNED:   rc = set_signed(ctx, value, out, len);   break;
-	case TINI_UNSIGNED: rc = set_unsigned(ctx, value, out, len); break;
-	case TINI_NUMBER:   rc = set_number(ctx, value, out, len);   break;
-	default:            rc = TINI_INVALID_TYPE;                  break;
+	void *t = (char *)target + field->offset;
+	switch (field->type) {
+	case TINI_STRING:   return tini_str(t, field->size, value);
+	case TINI_BOOL:     return tini_bool(t, value);
+	case TINI_SIGNED:   return set_signed(t, field->size, value);
+	case TINI_UNSIGNED: return set_unsigned(t, field->size, value);
+	case TINI_NUMBER:   return set_number(t, field->size, value);
+	default:            return TINI_INVALID_TYPE;
 	}
-
-	if (rc != TINI_SUCCESS) {
-		if (ctx->nerr < (sizeof(ctx->err)/sizeof(ctx->err[0]))) {
-			ctx->err[ctx->nerr] = (struct tini_error) { value, rc };
-		}
-		ctx->nerr++;
-	}
-
-	return rc;
 }
 

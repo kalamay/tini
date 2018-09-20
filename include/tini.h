@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <stdio.h>
 
@@ -31,9 +32,7 @@ enum tini_result
 {
 	TINI_SUCCESS,
 	TINI_SYNTAX,
-	TINI_NODE_COUNT,
-	TINI_LINE_COUNT,
-	TINI_STRING_SIZE,
+	TINI_STRING_TOO_BIG,
 	TINI_BOOL_FORMAT,
 	TINI_INTEGER_FORMAT,
 	TINI_INTEGER_TOO_SMALL,
@@ -49,115 +48,90 @@ enum tini_result
 
 struct tini
 {
-	enum tini_type type:8;
-	bool used;
-	uint16_t linepos;
-	uint16_t column;
-	uint16_t length;
-	struct tini *next;
+	const char *start;
+	uint32_t length;
+	enum tini_type type;
+	const char *line_start;
+	uint32_t line;
+	uint32_t column;
 };
 
 struct tini_error
 {
-	const struct tini *node;
+	const struct tini node;
+	const char *msg;
 	enum tini_result code;
+};
+
+struct tini_field
+{
+	const char *const name;
+	const size_t size;
+	const size_t offset;
+	const enum tini_type type;
+};
+
+struct tini_section
+{
+	const struct tini_field *fields;
+	size_t nfields;
+	void *target;
+	enum tini_result (*assign)(
+			const struct tini_section *section,
+			const struct tini *key,
+			const struct tini *value,
+			void *udata);
 };
 
 struct tini_ctx
 {
-	struct tini *const nodes;
-	uint32_t *const lines;
-	uint32_t const nnodes;
-	uint32_t const nlines;
-	uint32_t nused[2];
-	struct tini *section;
-	uint16_t linestart;
-	uint16_t linepos;
-	uint32_t offset;
 	const char *txt;
 	size_t txtlen;
-	struct tini_error err[8];
+	struct tini_error err[10];
 	unsigned nerr;
-	int cs;
+	enum tini_result (*load_section)(
+			struct tini_section *section,
+			const struct tini *name,
+			const struct tini *label,
+			void *udata);
+	void *udata;
 };
 
-#define tini_ctx_make(_nnodes, _nlines) { \
-	.nodes = ((struct tini [(_nnodes)]){}), \
-	.lines = ((uint32_t [(_nlines)]){}), \
-	.nnodes = (_nnodes), \
-	.nlines = (_nlines), \
-	.nused = { 0, 0 }, \
-	.section = NULL, \
-	.linestart = 0, \
-	.linepos = 0, \
-	.offset = 0, \
-	.txt = NULL, \
-	.txtlen = 0, \
+#define tini_ctx_make(_load_section, _udata) { \
 	.nerr = 0, \
-	.cs = -1, \
+	.load_section = (_load_section), \
+	.udata = (_udata), \
 }
-
-#define tini_offset(ctx, node) __extension__ ({ \
-	const struct tini *__node = (node); \
-	tini_bol((ctx), __node) + __node->column; \
-})
-#define tini_length(ctx, node) ((node)->length)
-#define tini_line(ctx, node) ((ctx)->linestart + (node)->linepos)
-#define tini_column(ctx, node) ((node)->column)
-#define tini_bol(ctx, node) ((ctx)->lines[(node)->linepos])
 
 extern enum tini_result
 tini_parse(struct tini_ctx *ctx,
 		const char *txt, size_t txtlen,
 		int flags);
 
-extern void
-tini_reset(struct tini_ctx *ctx);
-
-extern struct tini *
-tini_section(const struct tini_ctx *ctx,
-		const char *name, size_t namelen);
-
-#define tini_global(ctx) tini_section(ctx, NULL, 0)
-
-extern struct tini *
-tini_next_section(const struct tini_ctx *ctx,
-		const struct tini *section);
-
-extern struct tini *
-tini_key(const struct tini_ctx *ctx, const struct tini *section,
-		const char *name, size_t namelen);
-
-extern struct tini *
-tini_value(const struct tini *node);
-
 extern bool
-tini_eq(const struct tini_ctx *ctx, const struct tini *node,
-		const char *val, size_t len);
+tini_eq(const struct tini *node, const char *val, size_t len);
 
-#define tini_streq(ctx, node, str) __extension__ ({ \
+#define tini_streq(node, str) __extension__ ({ \
 	const char *__str = (str); \
-	tini_eq(ctx, node, __str, strlen(__str)); \
+	tini_eq(node, __str, strlen(__str)); \
 })
 
-extern char *
-tini_str(const struct tini_ctx *ctx, const struct tini *node,
-		char *dst, size_t len);
+extern enum tini_result
+tini_str(char *target, size_t len, const struct tini *value);
 
 extern enum tini_result
-tini_int(const struct tini_ctx *ctx, const struct tini *value,
-		uint8_t base, int64_t *out);
+tini_int(int64_t *target, uint8_t base, const struct tini *value);
 
 extern enum tini_result
-tini_bool(const struct tini_ctx *ctx, const struct tini *value,
-		bool *out);
+tini_bool(bool *target, const struct tini *value);
 
 extern enum tini_result
-tini_double(const struct tini_ctx *ctx, const struct tini *value,
-		double *out);
+tini_double(double *target, const struct tini *value);
 
-extern enum tini_result
-tini_validate(struct tini_ctx *ctx);
+extern void
+tini_add_error(struct tini_ctx *ctx, const struct tini *node,
+		const char *msg,
+		enum tini_result code);
 
 extern void
 tini_print_errors(const struct tini_ctx *ctx,
@@ -168,11 +142,12 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 		const char *path, FILE *out,
 		const char *fmt, ...);
 
-extern void
-tini_print(const struct tini_ctx *ctx, FILE *out);
-
 extern const char *
 tini_msg(enum tini_result rc);
+
+extern const struct tini_field *
+tini_field_find(const struct tini_section *s,
+		const char *name, size_t namelen);
 
 #define tini_type(v) _Generic((v), \
 		char *: TINI_STRING, \
@@ -188,28 +163,34 @@ tini_msg(enum tini_result rc);
 		float: TINI_NUMBER, \
 		double: TINI_NUMBER)
 
-#define tini_set(ctx, value, dst) \
-	tini__set((ctx), (value), tini_type(dst), \
-			_Generic((dst), char *: (dst), default: &(dst)), sizeof(dst))
+#define tini_field_make_as(_struct, _member, _name) \
+	((struct tini_field) { \
+		.name = _name, \
+		.size = sizeof(((_struct *)0)->_member), \
+		.offset = offsetof(_struct, _member), \
+		.type = tini_type(((_struct *)0)->_member) \
+	})
 
-#define tini_setf(ctx, section, name, dst) __extension__ ({ \
-	struct tini_ctx *__ctx = (ctx); \
-	const char *__nm = (name); \
-	tini_set(__ctx, \
-			tini_value(tini_key(__ctx, (section), __nm, strlen(__nm))), \
-			dst); \
-})
+#define tini_field_make(_struct, _member) \
+	tini_field_make_as(_struct, _member, #_member)
 
-#define tini_setm(ctx, section, _struct, _member) __extension__ ({ \
-	struct tini_ctx *__ctx = (ctx); \
-	tini_set(__ctx, \
-			tini_value(tini_key(__ctx, (section), #_member, sizeof(#_member)-1)), \
-			(_struct)->_member); \
-})
+#define tini_section_set(section, _target, _fields) do { \
+	struct tini_section *__tmp = (section); \
+	__tmp->fields = (_fields); \
+	__tmp->nfields = sizeof(_fields) / sizeof((_fields)[0]); \
+	__tmp->target = (_target); \
+} while (0)
 
 extern enum tini_result
-tini__set(struct tini_ctx *ctx, const struct tini *value,
-		enum tini_type type, void *out, size_t len);
+tini_set(void *target,
+		const struct tini_field *field,
+		const struct tini *value);
+
+extern enum tini_result
+tini_assign(const struct tini_section *section,
+		const struct tini *key,
+		const struct tini *value,
+		void *udata);
 
 #endif
 

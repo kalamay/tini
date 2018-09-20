@@ -11,58 +11,13 @@
 
 #define ERR_MAX (sizeof(((struct tini_ctx *)0)->err)/sizeof(((struct tini_ctx *)0)->err[0]))
 
-static int
-cmperr(const void *a, const void *b)
-{
-	const struct tini *na = ((struct tini_error *)a)->node;
-	const struct tini *nb = ((struct tini_error *)b)->node;
-	if (na->linepos < nb->linepos) { return -1; }
-	if (na->linepos > nb->linepos) { return 1; }
-	if (na->column < nb->column) { return -1; }
-	if (na->column > nb->column) { return 1; }
-	return 0;
-}
-
-enum tini_result
-tini_validate(struct tini_ctx *ctx)
-{
-	struct tini *ne = ctx->nodes + ctx->nnodes, *n = ne - ctx->nused[1];
-	for (--ne; ne >= n && ne->type == TINI_SECTION; --ne) {
-		if (!ne->used) {
-			if (ctx->nerr < ERR_MAX) {
-				ctx->err[ctx->nerr] = (struct tini_error) { ne, TINI_UNUSED_SECTION };
-			}
-			ctx->nerr++;
-		}
-
-		struct tini *f = ne->next;
-		for (; f; f = f->next) {
-			if (f->type == TINI_KEY && !f->used) {
-				if (ctx->nerr < ERR_MAX) {
-					ctx->err[ctx->nerr] = (struct tini_error) { f, TINI_UNUSED_KEY };
-				}
-				ctx->nerr++;
-			}
-		}
-	}
-
-	unsigned nerr = ctx->nerr;
-	if (nerr > ERR_MAX) { nerr = ERR_MAX; }
-
-	qsort(ctx->err, nerr, sizeof(ctx->err[0]), cmperr);
-
-	return nerr ? ctx->err[0].code : 0;
-}
-
 const char *
 tini_msg(enum tini_result rc)
 {
 	switch (rc) {
 	case TINI_SUCCESS:           return "ok";
 	case TINI_SYNTAX:            return "invalid syntax";
-	case TINI_NODE_COUNT:        return "node buffer full";
-	case TINI_LINE_COUNT:        return "line buffer full";
-	case TINI_STRING_SIZE:       return "string value too large";
+	case TINI_STRING_TOO_BIG:    return "string value too large";
 	case TINI_BOOL_FORMAT:       return "invalid boolean format";
 	case TINI_INTEGER_FORMAT:    return "invalid integer format";
 	case TINI_INTEGER_TOO_SMALL: return "integer too small";
@@ -79,13 +34,35 @@ tini_msg(enum tini_result rc)
 }
 
 void
+tini_add_error(struct tini_ctx *ctx, const struct tini *node,
+		const char *msg,
+		enum tini_result code)
+{
+	if (ctx->nerr < sizeof(ctx->err)/sizeof(ctx->err[0])) {
+		ctx->err[ctx->nerr] = (struct tini_error){
+			.node = *node,
+			.msg = msg,
+			.code = code,
+		};
+	}
+	ctx->nerr++;
+}
+
+static const char *
+msg(const struct tini_error *err)
+{
+	return err->msg ? err->msg : tini_msg(err->code);
+}
+
+void
 tini_print_errors(const struct tini_ctx *ctx, const char *path, FILE *out)
 {
 	unsigned nerr = ctx->nerr;
+	if (nerr == 0) { return; }
 	if (nerr > ERR_MAX) { nerr = ERR_MAX; }
 
 	for (unsigned i = 0; i < nerr; i++) {
-		tini_errorf(ctx, ctx->err[i].node, path, out, "%s", tini_msg(ctx->err[i].code));
+		tini_errorf(ctx, &ctx->err[i].node, path, out, "%s", msg(&ctx->err[i]));
 	}
 
 	if (nerr < ctx->nerr) {
@@ -104,9 +81,9 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 		const char *path, FILE *out, const char *fmt, ...)
 {
 	bool tty = isatty(fileno(out));
-	int ln = tini_line(ctx, node);
-	int col = tini_column(ctx, node);
-	const char *p = ctx->txt + tini_bol(ctx, node);
+	int ln = node->line;
+	int col = node->column;
+	const char *p = node->line_start;
 	const char *pe = p + col;
 	const char *eol = memchr(p, '\n', ctx->txtlen - (p - ctx->txt));
 	if (eol == NULL) { eol = ctx->txt + ctx->txtlen; }
@@ -130,37 +107,11 @@ tini_errorf(const struct tini_ctx *ctx, const struct tini *node,
 		else { fputc(' ', out); }
 	}
 
-	pe += tini_length(ctx, node);
+	pe += node->length;
 	if (tty) { fwrite(RNG, 1, sizeof(RNG) - 1, out); }
 	fputc('^', out);
 	for (p++; p<pe; p++) { fputc('~', out); }
 	if (tty) { fwrite(RST, 1, sizeof(RST) - 1, out); }
 	fputc('\n', out);
-}
-
-void
-tini_print(const struct tini_ctx *ctx, FILE *out)
-{
-	struct tini *ne = ctx->nodes + ctx->nnodes, *n = ne - ctx->nused[1];
-	for (--ne; ne >= n && ne->type == TINI_SECTION; --ne) {
-		int slen = tini_length(ctx, ne), fcount = 0;
-		if (slen > 0) {
-			fprintf(out, "[%.*s]\n", slen, ctx->txt + tini_offset(ctx, ne));
-		}
-		struct tini *f = ne->next;
-		for (; f; f = f->next) {
-			int flen = tini_length(ctx, f);
-			if (f->type == TINI_KEY) {
-				fprintf(out, "%.*s = ", flen, ctx->txt + tini_offset(ctx, f));
-				fcount++;
-			}
-			else if (f->type == TINI_VALUE) {
-				fprintf(out, "%.*s\n", flen, ctx->txt + tini_offset(ctx, f));
-			}
-		}
-		if (slen > 0 || fcount > 0) {
-			fputc('\n', out);
-		}
-	}
 }
 

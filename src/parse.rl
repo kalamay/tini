@@ -9,85 +9,91 @@
 
 	action mark { mark = p; }
 
-	action push_line {
-		if (ctx->linepos == ctx->nlines) { BAIL(TINI_LINE_COUNT); }
-		ctx->lines[ctx->linepos++] = ctx->offset;
-		ctx->offset = (p - txt) + 1;
-		ctx->cs = cs;
-		if (key) {
-			*sectail = key;
-			sectail = keytail;
-			key = NULL;
+	action mark_line {
+		bol = p + 1;
+		line++;
+	}
+
+	action set_section { SET(section); labelp = NULL; }
+	action set_label   { SET(label); labelp = &label; }
+	action set_key     { SET(key); }
+	action set_value   { SET(value); }
+
+	action load_section {
+		global_section = false;
+		SECTION();
+	}
+
+	action assign {
+		if (global_section && !has_section) {
+			SECTION();
+		}
+		enum tini_result rc = load.assign ?
+			load.assign(&load, &key, &value, ctx->udata) :
+			TINI_UNUSED_SECTION;
+		if (rc != TINI_SUCCESS) {
+			tini_add_error(ctx, select_error(&key, &value, rc), NULL, rc);
 		}
 	}
 
-	action set_section {
-		sec = get_node(ctx, TINI_SECTION, get_column(ctx, mark - txt), p - mark);
-		if (sec == NULL) { BAIL(TINI_NODE_COUNT); }
-		sectail = &sec->next;
-	}
-
-	action store_label {
-		struct tini *label = get_node(ctx, TINI_LABEL, get_column(ctx, mark - txt), p - mark);
-		if (label == NULL) { BAIL(TINI_NODE_COUNT); }
-		*sectail = label;
-		sectail = &label->next;
-	}
-
-	action store_key {
-		key = get_node(ctx, TINI_KEY, get_column(ctx, mark - txt), p - mark);
-		if (key == NULL) { BAIL(TINI_NODE_COUNT); }
-		keytail = &key->next;
-	}
-
-	action store_value {
-		struct tini *val = get_node(ctx, TINI_VALUE, get_column(ctx, mark - txt), p - mark);
-		if (val == NULL) { BAIL(TINI_NODE_COUNT); }
-		*keytail = val;
-		keytail = &val->next;
-	}
-
 	ws      = [\t\v\f\r ];
-	nl      = '\n' >push_line;
+	nl      = '\n' >mark_line;
 	name    = ( alpha | digit | '-' | '_' | '.' )+;
 	string  = ( name | ':' )+;
-	key     = string >mark %store_key;
-	value   = [^\n]* >mark %store_value;
+	key     = string >mark %set_key;
+	value   = [^\n]* >mark %set_value;
 	comment = ( '#' | ';' ) [^\n]*;
 	sname   = name >mark %set_section;
-	slabel  = ':' ws* ( string >mark %store_label );
+	slabel  = ':' ws* ( string >mark %set_label );
 	section = '[' ws* sname ws* ( ':' slabel ws* )? ']';
-	setting = key ws* '=' ws* ( value >mark );
-	line    = ( comment | section | setting ) {,1} nl;
+	field   = key ws* '=' ws* ( value >mark );
+	line    = ( comment | ( section %load_section ) | ( field %assign ) ) {,1} nl;
 
 	main := line*;
 }%%
 
-static uint32_t
-get_column(struct tini_ctx *ctx, uint32_t offset)
+static const struct tini *
+select_error(const struct tini *key, const struct tini *value, enum tini_result rc)
 {
-	return (uint16_t)(offset - ctx->offset);
+	switch (rc) {
+	case TINI_SUCCESS: return NULL;
+	case TINI_SYNTAX: return key;
+	case TINI_STRING_TOO_BIG: return value;
+	case TINI_BOOL_FORMAT: return value;
+	case TINI_INTEGER_FORMAT: return value;
+	case TINI_INTEGER_TOO_SMALL: return value;
+	case TINI_INTEGER_TOO_BIG: return value;
+	case TINI_INTEGER_NEGATIVE: return value;
+	case TINI_NUMBER_FORMAT: return value;
+	case TINI_INVALID_TYPE: return value;
+	case TINI_UNUSED_SECTION: return key;
+	case TINI_UNUSED_KEY: return key;
+	case TINI_MISSING_SECTION: return key;
+	case TINI_MISSING_KEY: return key;
+	}
+	return key;
 }
 
-static struct tini *
-get_node(struct tini_ctx *ctx, enum tini_type type, uint16_t column, uint16_t length)
-{
-	struct tini *node = NULL;
-	if (ctx->nused[0] + ctx->nused[1] < ctx->nnodes) {
-		bool sec = type == TINI_SECTION;
-		size_t idx = sec ? ctx->nnodes - ++ctx->nused[1] : ctx->nused[0]++;
-		node = &ctx->nodes[idx];
-		node->type = type;
-		node->linepos = ctx->linepos;
-		node->column = column;
-		node->length = length;
-		node->next = NULL;
-		if (sec) {
-			ctx->section = node;
-		}
-	}
-	return node;
-}
+#define SECTION() do { \
+	load.nfields = 0; \
+	load.target = NULL; \
+	load.assign = tini_assign; \
+	enum tini_result rc = ctx->load_section ? \
+		ctx->load_section(&load, &section, labelp, ctx->udata) : \
+		TINI_UNUSED_SECTION; \
+	has_section = rc == TINI_SUCCESS; \
+	if (!has_section) { \
+		tini_add_error(ctx, &section, NULL, rc); \
+	} \
+} while (0)
+
+#define SET(n) do { \
+	(n).start = mark; \
+	(n).length = p - mark; \
+	(n).line_start = bol; \
+	(n).line = line; \
+	(n).column = mark - bol; \
+} while (0)
 
 #define BAIL(c) do { \
 	rc = (c); \
@@ -103,48 +109,20 @@ tini_parse(struct tini_ctx *ctx,
 
 	const char *p = txt;
 	const char *pe = p + txtlen;
-	p += ctx->offset;
-
 	const char *mark = p;
-	int cs = ctx->cs;
-	enum tini_result rc = TINI_SUCCESS;
-	struct tini *sec, **sectail = NULL, *key = NULL, **keytail = NULL;
+	const char *bol = p;
+	size_t line = 0;
+	int cs = %%{ write start; }%%;
 
-	if (cs < 0) {
-		cs = %%{ write start; }%%;
-	}
+	struct tini section = { .type = TINI_SECTION };
+	struct tini label = { .type = TINI_LABEL };
+	struct tini key = { .type = TINI_KEY };
+	struct tini value = { .type = TINI_VALUE };
+	struct tini *labelp = NULL;
+	bool global_section = true;
+	bool has_section = false; 
 
-	ctx->nused[0] = 0;
-	ctx->nused[1] = 0;
-
-	// if we have an existing section we need to do two things:
-	//   1) move the section to the first section slot
-	//   2) save the line position information
-	{
-		uint16_t column = 0;
-		uint32_t length = 0;
-		struct tini *tmp = ctx->section;
-
-		if (tmp) {
-			column = tini_column(ctx, tmp);
-			length = tini_length(ctx, tmp);
-			ctx->lines[0] = ctx->lines[tmp->linepos];
-			ctx->linestart = tini_line(ctx, tmp);
-		}
-		else {
-			ctx->linestart = 0;
-		}
-
-		ctx->linepos = 0;
-
-		sec = get_node(ctx, TINI_SECTION, column, length);
-		sectail = &sec->next;
-
-		if (tmp) {
-			sec->column = 1;
-			ctx->linepos++;
-		}
-	}
+	struct tini_section load = {};
 
 	ctx->txt = txt;
 	ctx->txtlen = txtlen;
@@ -154,11 +132,12 @@ tini_parse(struct tini_ctx *ctx,
 
 	if (cs < %%{ write first_final; }%%) {
 		p++;
-		cs = -1;
-		BAIL(TINI_SYNTAX);
+		SET(value);
+		value.length = 1;
+		value.type = TINI_NONE;
+		tini_add_error(ctx, &value, NULL, TINI_SYNTAX);
 	}
 
-done:
-	return rc;
+	return ctx->nerr ? ctx->err[0].code : TINI_SUCCESS;
 }
 
