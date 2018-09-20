@@ -210,6 +210,57 @@ test_invalid_int(void)
 	mu_assert_int_eq(tini_parse(&ctx, cfg, sizeof(cfg)-1, 0), TINI_INTEGER_FORMAT);
 }
 
+struct labels {
+	struct labels_foo {
+		char id;
+		char name[16];
+	} foos[2];
+	size_t nfoos;
+};
+
+static const struct tini_field labels_foo_fields[] = {
+	tini_field_make(struct labels_foo, name),
+};
+
+static enum tini_result
+load_section(struct tini_section *section,
+			const struct tini *name,
+			const struct tini *label,
+			void *udata)
+{
+	struct labels *target = udata;
+	if (tini_streq(name, "foo") && label->length == 1 && target->nfoos < 2) {
+		struct labels_foo *foo = &target->foos[target->nfoos++];
+		foo->id = label->start[0];
+		tini_section_set(section, foo, labels_foo_fields);
+		return TINI_SUCCESS;
+	}
+	return TINI_MISSING_SECTION;
+}
+
+static void
+test_label(void)
+{
+	static const char cfg[] = 
+		"[foo:x]\n"
+		"name = foo\n"
+		"[foo:y]\n"
+		"name = bar\n"
+		;
+
+
+	struct labels target = { .foos = 0 };
+
+	struct tini_ctx ctx = tini_ctx_make(load_section, &target);
+
+	mu_assert_int_eq(tini_parse(&ctx, cfg, sizeof(cfg)-1, 0), TINI_SUCCESS);
+	mu_assert_int_eq(target.nfoos, 2);
+	mu_assert_int_eq(target.foos[0].id, 'x');
+	mu_assert_str_eq(target.foos[0].name, "foo");
+	mu_assert_int_eq(target.foos[1].id, 'y');
+	mu_assert_str_eq(target.foos[1].name, "bar");
+}
+
 int
 main(void)
 {
@@ -219,5 +270,6 @@ main(void)
 	mu_run(test_types);
 	mu_run(test_invalid_too_big);
 	mu_run(test_invalid_int);
+	mu_run(test_label);
 }
 

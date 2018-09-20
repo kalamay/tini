@@ -70,7 +70,7 @@ tini_parse(struct tini_ctx *ctx,
 	const char *mark = p;
 	const char *bol = p;
 	size_t line = 0;
-	int cs = 14;
+	int cs = 13;
 
 	struct tini section = { .type = TINI_SECTION };
 	struct tini label = { .type = TINI_LABEL };
@@ -99,7 +99,7 @@ tr1:
 		bol = p + 1;
 		line++;
 	}
-	goto st14;
+	goto st13;
 tr10:
 #line 10 "src/parse.rl"
 	{ mark = p; }
@@ -122,7 +122,7 @@ tr10:
 		bol = p + 1;
 		line++;
 	}
-	goto st14;
+	goto st13;
 tr12:
 #line 20 "src/parse.rl"
 	{ SET(value); }
@@ -143,8 +143,8 @@ tr12:
 		bol = p + 1;
 		line++;
 	}
-	goto st14;
-tr28:
+	goto st13;
+tr27:
 #line 22 "src/parse.rl"
 	{
 		global_section = false;
@@ -155,30 +155,30 @@ tr28:
 		bol = p + 1;
 		line++;
 	}
-	goto st14;
-st14:
+	goto st13;
+st13:
 	if ( ++p == pe )
-		goto _test_eof14;
-case 14:
+		goto _test_eof13;
+case 13:
 #line 164 "src/parse.c"
 	switch( (*p) ) {
 		case 10: goto tr1;
 		case 35: goto st1;
 		case 59: goto st1;
 		case 91: goto st6;
-		case 95: goto tr29;
+		case 95: goto tr28;
 	}
 	if ( (*p) < 48 ) {
 		if ( 45 <= (*p) && (*p) <= 46 )
-			goto tr29;
+			goto tr28;
 	} else if ( (*p) > 58 ) {
 		if ( (*p) > 90 ) {
 			if ( 97 <= (*p) && (*p) <= 122 )
-				goto tr29;
+				goto tr28;
 		} else if ( (*p) >= 65 )
-			goto tr29;
+			goto tr28;
 	} else
-		goto tr29;
+		goto tr28;
 	goto st0;
 st0:
 cs = 0;
@@ -190,7 +190,7 @@ case 1:
 	if ( (*p) == 10 )
 		goto tr1;
 	goto st1;
-tr29:
+tr28:
 #line 10 "src/parse.rl"
 	{ mark = p; }
 	goto st2;
@@ -337,7 +337,7 @@ case 8:
 		case 9: goto st8;
 		case 32: goto st8;
 		case 58: goto st9;
-		case 93: goto st13;
+		case 93: goto st12;
 	}
 	if ( 11 <= (*p) && (*p) <= 13 )
 		goto st8;
@@ -351,64 +351,78 @@ st9:
 		goto _test_eof9;
 case 9:
 #line 354 "src/parse.c"
-	if ( (*p) == 58 )
-		goto st10;
-	goto st0;
-st10:
-	if ( ++p == pe )
-		goto _test_eof10;
-case 10:
 	switch( (*p) ) {
-		case 9: goto st10;
-		case 32: goto st10;
-		case 95: goto tr23;
+		case 9: goto st9;
+		case 32: goto st9;
+		case 95: goto tr22;
 	}
 	if ( (*p) < 48 ) {
 		if ( (*p) > 13 ) {
 			if ( 45 <= (*p) && (*p) <= 46 )
-				goto tr23;
+				goto tr22;
 		} else if ( (*p) >= 11 )
-			goto st10;
+			goto st9;
 	} else if ( (*p) > 58 ) {
 		if ( (*p) > 90 ) {
 			if ( 97 <= (*p) && (*p) <= 122 )
-				goto tr23;
+				goto tr22;
 		} else if ( (*p) >= 65 )
-			goto tr23;
+			goto tr22;
 	} else
-		goto tr23;
+		goto tr22;
 	goto st0;
-tr23:
+tr22:
 #line 10 "src/parse.rl"
 	{ mark = p; }
+	goto st10;
+st10:
+	if ( ++p == pe )
+		goto _test_eof10;
+case 10:
+#line 383 "src/parse.c"
+	switch( (*p) ) {
+		case 9: goto tr23;
+		case 32: goto tr23;
+		case 93: goto tr25;
+		case 95: goto st10;
+	}
+	if ( (*p) < 48 ) {
+		if ( (*p) > 13 ) {
+			if ( 45 <= (*p) && (*p) <= 46 )
+				goto st10;
+		} else if ( (*p) >= 11 )
+			goto tr23;
+	} else if ( (*p) > 58 ) {
+		if ( (*p) > 90 ) {
+			if ( 97 <= (*p) && (*p) <= 122 )
+				goto st10;
+		} else if ( (*p) >= 65 )
+			goto st10;
+	} else
+		goto st10;
+	goto st0;
+tr23:
+#line 18 "src/parse.rl"
+	{ SET(label); labelp = &label; }
 	goto st11;
 st11:
 	if ( ++p == pe )
 		goto _test_eof11;
 case 11:
-#line 390 "src/parse.c"
+#line 413 "src/parse.c"
 	switch( (*p) ) {
-		case 9: goto tr24;
-		case 32: goto tr24;
-		case 93: goto tr26;
-		case 95: goto st11;
+		case 9: goto st11;
+		case 32: goto st11;
+		case 93: goto st12;
 	}
-	if ( (*p) < 48 ) {
-		if ( (*p) > 13 ) {
-			if ( 45 <= (*p) && (*p) <= 46 )
-				goto st11;
-		} else if ( (*p) >= 11 )
-			goto tr24;
-	} else if ( (*p) > 58 ) {
-		if ( (*p) > 90 ) {
-			if ( 97 <= (*p) && (*p) <= 122 )
-				goto st11;
-		} else if ( (*p) >= 65 )
-			goto st11;
-	} else
+	if ( 11 <= (*p) && (*p) <= 13 )
 		goto st11;
 	goto st0;
-tr24:
+tr18:
+#line 17 "src/parse.rl"
+	{ SET(section); labelp = NULL; }
+	goto st12;
+tr25:
 #line 18 "src/parse.rl"
 	{ SET(label); labelp = &label; }
 	goto st12;
@@ -416,33 +430,12 @@ st12:
 	if ( ++p == pe )
 		goto _test_eof12;
 case 12:
-#line 420 "src/parse.c"
-	switch( (*p) ) {
-		case 9: goto st12;
-		case 32: goto st12;
-		case 93: goto st13;
-	}
-	if ( 11 <= (*p) && (*p) <= 13 )
-		goto st12;
-	goto st0;
-tr18:
-#line 17 "src/parse.rl"
-	{ SET(section); labelp = NULL; }
-	goto st13;
-tr26:
-#line 18 "src/parse.rl"
-	{ SET(label); labelp = &label; }
-	goto st13;
-st13:
-	if ( ++p == pe )
-		goto _test_eof13;
-case 13:
-#line 441 "src/parse.c"
+#line 434 "src/parse.c"
 	if ( (*p) == 10 )
-		goto tr28;
+		goto tr27;
 	goto st0;
 	}
-	_test_eof14: cs = 14; goto _test_eof; 
+	_test_eof13: cs = 13; goto _test_eof; 
 	_test_eof1: cs = 1; goto _test_eof; 
 	_test_eof2: cs = 2; goto _test_eof; 
 	_test_eof3: cs = 3; goto _test_eof; 
@@ -455,7 +448,6 @@ case 13:
 	_test_eof10: cs = 10; goto _test_eof; 
 	_test_eof11: cs = 11; goto _test_eof; 
 	_test_eof12: cs = 12; goto _test_eof; 
-	_test_eof13: cs = 13; goto _test_eof; 
 
 	_test_eof: {}
 	_out: {}
@@ -463,7 +455,7 @@ case 13:
 
 #line 132 "src/parse.rl"
 
-	if (cs < 14) {
+	if (cs < 13) {
 		p++;
 		SET(value);
 		value.length = 1;

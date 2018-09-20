@@ -44,8 +44,8 @@
 	value   = [^\n]* >mark %set_value;
 	comment = ( '#' | ';' ) [^\n]*;
 	sname   = name >mark %set_section;
-	slabel  = ':' ws* ( string >mark %set_label );
-	section = '[' ws* sname ws* ( ':' slabel ws* )? ']';
+	slabel  = string >mark %set_label;
+	section = '[' ws* sname ws* ( ':' ws* slabel ws* )? ']';
 	field   = key ws* '=' ws* ( value >mark );
 	line    = ( comment | ( section %load_section ) | ( field %assign ) ) {,1} nl;
 
