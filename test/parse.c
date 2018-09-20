@@ -243,22 +243,22 @@ test_label(void)
 {
 	static const char cfg[] = 
 		"[foo:x]\n"
-		"name = foo\n"
+		"name = foofoofoofoo\n"
 		"[foo:y]\n"
-		"name = bar\n"
+		"name = barbarbarbar\n"
 		;
 
 
-	struct labels target = { .foos = 0 };
+	struct labels target = {};
 
 	struct tini_ctx ctx = tini_ctx_make(load_section, &target);
 
 	mu_assert_int_eq(tini_parse(&ctx, cfg, sizeof(cfg)-1, 0), TINI_SUCCESS);
 	mu_assert_int_eq(target.nfoos, 2);
 	mu_assert_int_eq(target.foos[0].id, 'x');
-	mu_assert_str_eq(target.foos[0].name, "foo");
+	mu_assert_str_eq(target.foos[0].name, "foofoofoofoo");
 	mu_assert_int_eq(target.foos[1].id, 'y');
-	mu_assert_str_eq(target.foos[1].name, "bar");
+	mu_assert_str_eq(target.foos[1].name, "barbarbarbar");
 }
 
 int
