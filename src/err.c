@@ -27,8 +27,8 @@ tini_msg(enum tini_result rc)
 	case TINI_INVALID_TYPE:      return "invalid type";
 	case TINI_UNUSED_SECTION:    return "unsupported section";
 	case TINI_UNUSED_KEY:        return "unsupported key";
-	case TINI_MISSING_SECTION:   return "section not specified";
-	case TINI_MISSING_KEY:       return "key not specified";
+	case TINI_MISSING_SECTION:   return "section not allowed";
+	case TINI_MISSING_KEY:       return "key not allowed";
 	}
 	return "unknown error";
 }
