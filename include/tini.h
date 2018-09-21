@@ -160,6 +160,9 @@ tini_bool(bool *target, const struct tini *value);
 extern enum tini_result
 tini_double(double *target, const struct tini *value);
 
+extern char *
+tini_copy(const struct tini *value);
+
 extern void
 tini_add_error(struct tini_ctx *ctx, const struct tini *node,
 		const char *msg,

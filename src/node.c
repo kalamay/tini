@@ -81,3 +81,15 @@ tini_double(double *t, const struct tini *value)
 	return TINI_NUMBER_FORMAT;
 }
 
+char *
+tini_copy(const struct tini *value)
+{
+	size_t len = value->length;
+	char *c = malloc(len + 1);
+	if (c) {
+		memcpy(c, value->start, len);
+		c[len] = '\0';
+	}
+	return c;
+}
+
