@@ -5,6 +5,7 @@ struct small
 {
 	bool global1;
 	unsigned global2;
+	struct tini global3;
 	struct small_section1 {
 		char name[16];
 	} section1;
@@ -13,6 +14,7 @@ struct small
 static const struct tini_field small_global[] = {
 	tini_field_make(struct small, global1),
 	tini_field_make(struct small, global2),
+	tini_field_make(struct small, global3),
 };
 
 static const struct tini_field small_section1[] = {
@@ -122,6 +124,7 @@ test_basic(void)
 	static const char cfg[] = 
 		"global1 = true\n"
 		"global2 = 12345\n"
+		"global3 = some stuff\n"
 		"\n"
 		"[section1]\n"
 		"name = stuff\n"
@@ -130,10 +133,14 @@ test_basic(void)
 	struct small target = {};
 
 	struct tini_ctx ctx = tini_ctx_make(load_small, &target);
+	char buf[11];
 
 	mu_assert_int_eq(tini_parse(&ctx, cfg, sizeof(cfg)-1, 0), TINI_SUCCESS);
 	mu_assert_int_eq(target.global1, true);
 	mu_assert_int_eq(target.global2, 12345);
+	mu_assert_int_eq(target.global3.length, 10);
+	mu_assert_int_eq(tini_str(buf, sizeof(buf), &target.global3), TINI_SUCCESS);
+	mu_assert_str_eq(buf, "some stuff");
 	mu_assert_str_eq(target.section1.name, "stuff");
 }
 

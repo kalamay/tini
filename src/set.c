@@ -112,6 +112,7 @@ tini_set(void *target,
 	case TINI_SIGNED:   return set_signed(t, field->size, value);
 	case TINI_UNSIGNED: return set_unsigned(t, field->size, value);
 	case TINI_NUMBER:   return set_number(t, field->size, value);
+	case TINI_NODE:     return (memcpy(t, value, sizeof(*value)), 0);
 	default:            return TINI_INVALID_TYPE;
 	}
 }

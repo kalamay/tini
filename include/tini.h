@@ -41,7 +41,8 @@ enum tini_type
 	TINI_BOOL,
 	TINI_SIGNED,
 	TINI_UNSIGNED,
-	TINI_NUMBER
+	TINI_NUMBER,
+	TINI_NODE,
 };
 
 #define tini_type(v) _Generic((v), \
@@ -56,7 +57,8 @@ enum tini_type
 		uint32_t: TINI_UNSIGNED, \
 		uint64_t: TINI_UNSIGNED, \
 		float: TINI_NUMBER, \
-		double: TINI_NUMBER)
+		double: TINI_NUMBER, \
+		struct tini: TINI_NODE)
 
 struct tini
 {
