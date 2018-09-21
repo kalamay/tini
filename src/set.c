@@ -32,7 +32,7 @@ tini_assign(const struct tini_section *section,
 	if (f == NULL) {
 		return TINI_MISSING_KEY;
 	}
-	return tini_set(section->target, f, value);
+	return tini_set_field(section->target, f, value);
 }
 
 #define SETS(rc, out, type, val, min, max) do { \
@@ -83,6 +83,7 @@ set_unsigned(void *out, size_t len, const struct tini *value)
 	}
 	return rc;
 }
+
 static enum tini_result
 set_number(void *out, size_t len, const struct tini *value)
 {
@@ -94,26 +95,34 @@ set_number(void *out, size_t len, const struct tini *value)
 		case sizeof(double): *(double *)out = val; break;
 		}
 	}
-	return rc; }
+	return rc;
+}
 
 enum tini_result
-tini_set(void *target,
+tini_set(void *t,
+		enum tini_type type, size_t size,
+		const struct tini *value)
+{
+	switch (type) {
+	case TINI_STRING:   return tini_str(t, size, value);
+	case TINI_BOOL:     return tini_bool(t, value);
+	case TINI_SIGNED:   return set_signed(t, size, value);
+	case TINI_UNSIGNED: return set_unsigned(t, size, value);
+	case TINI_NUMBER:   return set_number(t, size, value);
+	case TINI_NODE:     return (memcpy(t, value, sizeof(*value)), 0);
+	default:            return TINI_INVALID_TYPE;
+	}
+}
+
+enum tini_result
+tini_set_field(void *target,
 		const struct tini_field *field,
 		const struct tini *value)
 {
 	if (field == NULL) {
 		return TINI_UNUSED_KEY;
 	}
-
 	void *t = (char *)target + field->offset;
-	switch (field->type) {
-	case TINI_STRING:   return tini_str(t, field->size, value);
-	case TINI_BOOL:     return tini_bool(t, value);
-	case TINI_SIGNED:   return set_signed(t, field->size, value);
-	case TINI_UNSIGNED: return set_unsigned(t, field->size, value);
-	case TINI_NUMBER:   return set_number(t, field->size, value);
-	case TINI_NODE:     return (memcpy(t, value, sizeof(*value)), 0);
-	default:            return TINI_INVALID_TYPE;
-	}
+	return tini_set(t, field->type, field->size, value);
 }
 

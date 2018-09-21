@@ -183,6 +183,11 @@ tini_field_find(const struct tini_section *s,
 
 extern enum tini_result
 tini_set(void *target,
+		enum tini_type type, size_t size,
+		const struct tini *value);
+
+extern enum tini_result
+tini_set_field(void *target,
 		const struct tini_field *field,
 		const struct tini *value);
 
