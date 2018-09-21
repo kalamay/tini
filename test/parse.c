@@ -220,7 +220,7 @@ test_invalid_int(void)
 struct labels {
 	struct labels_foo {
 		char id;
-		char name[16];
+		struct tini name;
 	} foos[2];
 	size_t nfoos;
 };
@@ -259,13 +259,16 @@ test_label(void)
 	struct labels target = {};
 
 	struct tini_ctx ctx = tini_ctx_make(load_section, &target);
+	char buf[16];
 
 	mu_assert_int_eq(tini_parse(&ctx, cfg, sizeof(cfg)-1, 0), TINI_SUCCESS);
 	mu_assert_int_eq(target.nfoos, 2);
 	mu_assert_int_eq(target.foos[0].id, 'x');
-	mu_assert_str_eq(target.foos[0].name, "foofoofoofoo");
+	mu_assert_int_eq(tini_str(buf, sizeof(buf), &target.foos[0].name), TINI_SUCCESS);
+	mu_assert_str_eq(buf, "foofoofoofoo");
 	mu_assert_int_eq(target.foos[1].id, 'y');
-	mu_assert_str_eq(target.foos[1].name, "barbarbarbar");
+	mu_assert_int_eq(tini_str(buf, sizeof(buf), &target.foos[1].name), TINI_SUCCESS);
+	mu_assert_str_eq(buf, "barbarbarbar");
 }
 
 int

@@ -99,8 +99,7 @@ set_number(void *out, size_t len, const struct tini *value)
 }
 
 enum tini_result
-tini_set(void *t,
-		enum tini_type type, size_t size,
+tini_set(void *t, size_t size, enum tini_type type,
 		const struct tini *value)
 {
 	switch (type) {
@@ -123,6 +122,6 @@ tini_set_field(void *target,
 		return TINI_UNUSED_KEY;
 	}
 	void *t = (char *)target + field->offset;
-	return tini_set(t, field->type, field->size, value);
+	return tini_set(t, field->size, field->type, value);
 }
 

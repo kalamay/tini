@@ -185,8 +185,7 @@ tini_field_find(const struct tini_section *s,
 		const char *name, size_t namelen);
 
 extern enum tini_result
-tini_set(void *target,
-		enum tini_type type, size_t size,
+tini_set(void *target, size_t size, enum tini_type type,
 		const struct tini *value);
 
 extern enum tini_result
